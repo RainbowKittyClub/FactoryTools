@@ -15,6 +15,9 @@ import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3f;
 
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
+import com.mojang.math.Transformation;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
@@ -25,7 +28,10 @@ import net.minecraft.world.phys.Vec3;
 
 public class VirtualDestroyStage extends ElementHolder {
     public static final LazyItemStack[] MODELS = new LazyItemStack[10];
+    private static final Transformation CUBE_TRANSFORMATION = new Transformation(null, null, new Vector3f(1.01f), null);
     private final ItemDisplayElement main = new ItemDisplayElement();
+    private final List<ItemDisplayElement> extraParts = new ArrayList<>();
+    private List<MiningStageModel> models = List.of();
     private int state;
 
 
@@ -38,15 +44,17 @@ public class VirtualDestroyStage extends ElementHolder {
     @SuppressWarnings("SameReturnValue")
     public static boolean updateState(ServerPlayer player, BlockPos pos, BlockState state, int i) {
         var self = ((ServerPlayNetExtF) player.connection).factorytools$getVirtualDestroyStage();
+        var marker = i == -1 ? null : getMarker(state, pos, player);
 
-        if (i == -1 || !((state.getBlock() instanceof Marker marker && marker.showCustomMiningStageMarker(state, pos, player))
-                || (PolymerSyncedObject.getSyncedObject(BuiltInRegistries.BLOCK, state.getBlock()) instanceof Marker marker2 && marker2.showCustomMiningStageMarker(state, pos, player)))) {
+        if (marker == null) {
             self.setState(-1);
             if (self.getAttachment() != null) {
                 self.destroy();
             }
             return true;
         }
+
+        self.setModels(marker.getMiningStageModels(state, pos, player));
 
         var vecPos = Vec3.atCenterOf(pos);
 
@@ -57,6 +65,17 @@ public class VirtualDestroyStage extends ElementHolder {
         self.setState(i);
 
         return true;
+    }
+
+    @Nullable
+    private static Marker getMarker(BlockState state, BlockPos pos, ServerPlayer player) {
+        if (state.getBlock() instanceof Marker marker && marker.showCustomMiningStageMarker(state, pos, player)) {
+            return marker;
+        }
+        if (PolymerSyncedObject.getSyncedObject(BuiltInRegistries.BLOCK, state.getBlock()) instanceof Marker marker && marker.showCustomMiningStageMarker(state, pos, player)) {
+            return marker;
+        }
+        return null;
     }
 
     public static void destroy(@Nullable ServerPlayer player) {
@@ -71,8 +90,57 @@ public class VirtualDestroyStage extends ElementHolder {
         }
 
         this.state = i;
-        this.main.setItem(i < 0 ? ItemStack.EMPTY : MODELS[Math.min(i, MODELS.length - 1)].get());
+        this.updateItems();
         this.tick();
+    }
+
+    /**
+     * Sets the models drawn instead of the full cube, one display each. Null or empty brings the cube back.
+     */
+    public void setModels(@Nullable List<MiningStageModel> models) {
+        models = models != null ? List.copyOf(models) : List.of();
+        if (this.models.equals(models)) {
+            return;
+        }
+
+        this.models = models;
+        if (models.isEmpty()) {
+            this.main.setTransformation(CUBE_TRANSFORMATION);
+        } else {
+            this.main.setTransformation(models.getFirst().transformation());
+        }
+
+        while (this.extraParts.size() > Math.max(models.size() - 1, 0)) {
+            this.removeElement(this.extraParts.removeLast());
+        }
+        for (int i = 1; i < models.size(); i++) {
+            if (i > this.extraParts.size()) {
+                var element = new ItemDisplayElement();
+                element.setItem(this.itemFor(i));
+                element.setTransformation(models.get(i).transformation());
+                this.extraParts.add(element);
+                this.addElement(element);
+            } else {
+                this.extraParts.get(i - 1).setTransformation(models.get(i).transformation());
+            }
+        }
+
+        this.updateItems();
+        this.tick();
+    }
+
+    private void updateItems() {
+        this.main.setItem(this.itemFor(0));
+        for (int i = 0; i < this.extraParts.size(); i++) {
+            this.extraParts.get(i).setItem(this.itemFor(i + 1));
+        }
+    }
+
+    private ItemStack itemFor(int part) {
+        if (this.state < 0) {
+            return ItemStack.EMPTY;
+        }
+        return this.models.isEmpty() ? MODELS[Math.min(this.state, MODELS.length - 1)].get() : this.models.get(part).stage(this.state);
     }
 
 
@@ -92,6 +160,10 @@ public class VirtualDestroyStage extends ElementHolder {
                 }
                 """;
 
+        PolymerResourcePackUtils.RESOURCE_PACK_AFTER_INITIAL_CREATION_EVENT.register(x -> {
+            x.addPreFinishTask(MiningStageModel::addToResourcePack);
+        });
+
         PolymerResourcePackUtils.RESOURCE_PACK_CREATION_EVENT.register(x -> {
             for (var i = 0; i < MODELS.length; i++) {
                 x.addData("", new ItemAsset(new BasicItemModel(Identifier.fromNamespaceAndPath(ModInit.ID, "block/special/destroy_stage_" + i)), ItemAsset.Properties.DEFAULT).toJson().getBytes(StandardCharsets.UTF_8));
@@ -103,6 +175,14 @@ public class VirtualDestroyStage extends ElementHolder {
     public interface Marker {
         default boolean showCustomMiningStageMarker(BlockState state, BlockPos pos, ServerPlayer player) {
             return true;
+        }
+
+        /**
+         * Models shaped like the block, drawn in place of the full cube. Null keeps the cube.
+         */
+        @Nullable
+        default List<MiningStageModel> getMiningStageModels(BlockState state, BlockPos pos, ServerPlayer player) {
+            return null;
         }
     }
 }
