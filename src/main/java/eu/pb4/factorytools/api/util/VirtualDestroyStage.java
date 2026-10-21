@@ -5,6 +5,7 @@ import eu.pb4.factorytools.impl.ModInit;
 import eu.pb4.factorytools.impl.ServerPlayNetExtF;
 import eu.pb4.polymer.core.api.utils.PolymerSyncedObject;
 import eu.pb4.polymer.resourcepack.api.PolymerResourcePackUtils;
+import eu.pb4.polymer.resourcepack.api.ResourcePackBuilder;
 import eu.pb4.polymer.resourcepack.extras.api.ResourcePackExtras;
 import eu.pb4.polymer.resourcepack.extras.api.format.item.ItemAsset;
 import eu.pb4.polymer.resourcepack.extras.api.format.item.model.BasicItemModel;
@@ -13,7 +14,15 @@ import eu.pb4.polymer.virtualentity.api.attachment.ChunkAttachment;
 import eu.pb4.polymer.virtualentity.api.elements.ItemDisplayElement;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3f;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import javax.imageio.ImageIO;
+import java.awt.color.ColorSpace;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
@@ -28,6 +37,7 @@ import net.minecraft.world.phys.Vec3;
 
 public class VirtualDestroyStage extends ElementHolder {
     public static final LazyItemStack[] MODELS = new LazyItemStack[10];
+    private static final Logger LOGGER = LoggerFactory.getLogger(VirtualDestroyStage.class);
     private static final Transformation CUBE_TRANSFORMATION = new Transformation(null, null, new Vector3f(1.01f), null);
     private final ItemDisplayElement main = new ItemDisplayElement();
     private final List<ItemDisplayElement> extraParts = new ArrayList<>();
@@ -155,12 +165,13 @@ public class VirtualDestroyStage extends ElementHolder {
                 {
                   "parent": "factorytools:block/special/destroy_stage_base",
                   "textures": {
-                    "all": "minecraft:block/destroy_stage_|ID|"
+                    "all": "factorytools:block/special/crack_|ID|"
                   }
                 }
                 """;
 
         PolymerResourcePackUtils.RESOURCE_PACK_AFTER_INITIAL_CREATION_EVENT.register(x -> {
+            x.addPreFinishTask(VirtualDestroyStage::addCrackTextures);
             x.addPreFinishTask(MiningStageModel::addToResourcePack);
         });
 
@@ -170,6 +181,63 @@ public class VirtualDestroyStage extends ElementHolder {
                 x.addData("assets/factorytools/models/block/special/destroy_stage_" + i + ".json", model.replace("|ID|", "" + i).getBytes(StandardCharsets.UTF_8));
             }
         });
+    }
+
+    /**
+     * Stage texture for crack models: vanilla's destroy_stage_N, made to blend like vanilla's breaking overlay
+     * when drawn as an item model.
+     */
+    public static Identifier crackTexture(int stage) {
+        return Identifier.fromNamespaceAndPath(ModInit.ID, "block/special/crack_" + stage);
+    }
+
+    // Vanilla multiplies the block by twice the crack's grey; an item model can only alpha-blend, so darker
+    // pixels become translucent black and lighter ones translucent white, which gives nearly the same result
+    private static void addCrackTextures(ResourcePackBuilder builder) {
+        for (int i = 0; i < MODELS.length; i++) {
+            var path = "assets/minecraft/textures/block/destroy_stage_" + i + ".png";
+            var vanilla = builder.getDataOrSource(path);
+            if (vanilla == null) {
+                LOGGER.warn("Couldn't read '{}', the crack texture for stage {} will be missing", path, i);
+                continue;
+            }
+            var target = "assets/" + ModInit.ID + "/textures/block/special/crack_" + i + ".png";
+            try {
+                var image = ImageIO.read(new ByteArrayInputStream(vanilla));
+                var out = new BufferedImage(image.getWidth(), image.getHeight(), BufferedImage.TYPE_INT_ARGB);
+                // getRGB treats grey PNGs as linear and brightens them; the shader samples the raw grey
+                boolean grey = image.getColorModel().getColorSpace().getType() == ColorSpace.TYPE_GRAY;
+                var raster = image.getRaster();
+                double max = (1 << raster.getSampleModel().getSampleSize(0)) - 1;
+                for (int y = 0; y < image.getHeight(); y++) {
+                    for (int x = 0; x < image.getWidth(); x++) {
+                        double value;
+                        double alpha;
+                        if (grey) {
+                            value = raster.getSample(x, y, 0) / max;
+                            alpha = raster.getNumBands() > 1 ? raster.getSample(x, y, 1) / max : 1;
+                        } else {
+                            int argb = image.getRGB(x, y);
+                            value = (((argb >> 16) & 0xFF) + ((argb >> 8) & 0xFF) + (argb & 0xFF)) / (3 * 255.0);
+                            alpha = (argb >>> 24) / 255.0;
+                        }
+                        // Vanilla's crumbling shader discards pixels below 0.1 alpha
+                        if (alpha < 0.1) {
+                            continue;
+                        }
+                        double factor = 2 * value;
+                        int overlay = (int) Math.round(Math.min(1, Math.abs(1 - factor)) * 255);
+                        out.setRGB(x, y, (overlay << 24) | (factor < 1 ? 0x000000 : 0xFFFFFF));
+                    }
+                }
+                var bytes = new ByteArrayOutputStream();
+                ImageIO.write(out, "png", bytes);
+                builder.addData(target, bytes.toByteArray());
+            } catch (IOException e) {
+                LOGGER.warn("Couldn't convert '{}', using it unblended", path, e);
+                builder.addData(target, vanilla);
+            }
+        }
     }
 
     public interface Marker {

@@ -104,7 +104,7 @@ public record MiningStageModel(List<LazyItemStack> stages, Matrix4fc transformat
 
             for (int i = 0; i < VirtualDestroyStage.MODELS.length; i++) {
                 var model = stageModelId(source, i);
-                var texture = Identifier.withDefaultNamespace("block/destroy_stage_" + i);
+                var texture = VirtualDestroyStage.crackTexture(i);
                 builder.addData(AssetPaths.model(model) + ".json", ModelAsset.builder().parent(base)
                         .texture("all", texture).texture("particle", texture).build());
                 builder.addData(AssetPaths.itemAsset(ResourcePackExtras.bridgeModel(model)),
