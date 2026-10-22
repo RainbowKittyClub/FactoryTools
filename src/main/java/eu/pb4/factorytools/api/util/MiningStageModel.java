@@ -83,6 +83,11 @@ public record MiningStageModel(List<LazyItemStack> stages, Matrix4fc transformat
             sources = List.copyOf(STAGES.keySet());
         }
 
+        var textures = new Identifier[VirtualDestroyStage.MODELS.length];
+        for (int i = 0; i < textures.length; i++) {
+            textures[i] = VirtualDestroyStage.stageTexture(builder, i);
+        }
+
         for (var source : sources) {
             var elements = resolveElements(builder, source);
             if (elements == null) {
@@ -104,7 +109,7 @@ public record MiningStageModel(List<LazyItemStack> stages, Matrix4fc transformat
 
             for (int i = 0; i < VirtualDestroyStage.MODELS.length; i++) {
                 var model = stageModelId(source, i);
-                var texture = VirtualDestroyStage.crackTexture(i);
+                var texture = textures[i];
                 builder.addData(AssetPaths.model(model) + ".json", ModelAsset.builder().parent(base)
                         .texture("all", texture).texture("particle", texture).build());
                 builder.addData(AssetPaths.itemAsset(ResourcePackExtras.bridgeModel(model)),

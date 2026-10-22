@@ -7,6 +7,7 @@ import eu.pb4.polymer.core.api.utils.PolymerSyncedObject;
 import eu.pb4.polymer.resourcepack.api.PolymerResourcePackUtils;
 import eu.pb4.polymer.resourcepack.api.ResourcePackBuilder;
 import eu.pb4.polymer.resourcepack.extras.api.ResourcePackExtras;
+import eu.pb4.polymer.resourcepack.extras.api.format.model.ModelAsset;
 import eu.pb4.polymer.virtualentity.api.ElementHolder;
 import eu.pb4.polymer.virtualentity.api.attachment.ChunkAttachment;
 import eu.pb4.polymer.virtualentity.api.elements.ItemDisplayElement;
@@ -175,7 +176,7 @@ public class VirtualDestroyStage extends ElementHolder {
 
         PolymerResourcePackUtils.RESOURCE_PACK_CREATION_EVENT.register(x -> {
             for (var i = 0; i < MODELS.length; i++) {
-                x.addData("assets/factorytools/models/block/special/destroy_stage_" + i + ".json", model.replace("|ID|", "" + i).getBytes(StandardCharsets.UTF_8));
+                x.addData(cubeModelPath(i), model.replace("|ID|", "" + i).getBytes(StandardCharsets.UTF_8));
             }
         });
     }
@@ -188,6 +189,23 @@ public class VirtualDestroyStage extends ElementHolder {
         return Identifier.fromNamespaceAndPath(ModInit.ID, "block/special/crack_" + stage);
     }
 
+    // The crack texture, or vanilla's own if it couldn't be made
+    static Identifier stageTexture(ResourcePackBuilder builder, int stage) {
+        return builder.getResource(crackTexturePath(stage)) != null ? crackTexture(stage) : vanillaTexture(stage);
+    }
+
+    private static Identifier vanillaTexture(int stage) {
+        return Identifier.withDefaultNamespace("block/destroy_stage_" + stage);
+    }
+
+    private static String crackTexturePath(int stage) {
+        return "assets/" + ModInit.ID + "/textures/block/special/crack_" + stage + ".png";
+    }
+
+    private static String cubeModelPath(int stage) {
+        return "assets/" + ModInit.ID + "/models/block/special/destroy_stage_" + stage + ".json";
+    }
+
     // Vanilla multiplies the block by twice the crack's grey; an item model can only alpha-blend, so darker
     // pixels become translucent black and lighter ones translucent white, which gives nearly the same result
     private static void addCrackTextures(ResourcePackBuilder builder) {
@@ -195,10 +213,12 @@ public class VirtualDestroyStage extends ElementHolder {
             var path = "assets/minecraft/textures/block/destroy_stage_" + i + ".png";
             var vanilla = builder.getDataOrSource(path);
             if (vanilla == null) {
-                LOGGER.warn("Couldn't read '{}', the crack texture for stage {} will be missing", path, i);
+                LOGGER.warn("Couldn't read '{}', stage {} will use it unblended", path, i);
+                builder.addData(cubeModelPath(i), ModelAsset.builder().parent(Identifier.fromNamespaceAndPath(ModInit.ID, "block/special/destroy_stage_base"))
+                        .texture("all", vanillaTexture(i)).build());
                 continue;
             }
-            var target = "assets/" + ModInit.ID + "/textures/block/special/crack_" + i + ".png";
+            var target = crackTexturePath(i);
             try {
                 var image = ImageIO.read(new ByteArrayInputStream(vanilla));
                 var out = new BufferedImage(image.getWidth(), image.getHeight(), BufferedImage.TYPE_INT_ARGB);
