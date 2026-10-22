@@ -89,9 +89,16 @@ public record MiningStageModel(List<LazyItemStack> stages, Matrix4fc transformat
         }
 
         for (var source : sources) {
-            var cracked = crackElements(builder, source);
+            JsonArray cracked = null;
+            try {
+                cracked = crackElements(builder, source);
+                if (cracked == null) {
+                    LOGGER.warn("Couldn't find the elements of model '{}', its mining stages will be a full cube", source);
+                }
+            } catch (Exception e) {
+                LOGGER.warn("Couldn't read the elements of model '{}', its mining stages will be a full cube", source, e);
+            }
             if (cracked == null) {
-                LOGGER.warn("Couldn't find the elements of model '{}', its mining stages will be a full cube", source);
                 cracked = new JsonArray();
                 cracked.add(crackElement(cubeElement()));
             }

@@ -221,6 +221,9 @@ public class VirtualDestroyStage extends ElementHolder {
             var target = crackTexturePath(i);
             try {
                 var image = ImageIO.read(new ByteArrayInputStream(vanilla));
+                if (image == null) {
+                    throw new IOException("Unsupported image format");
+                }
                 var out = new BufferedImage(image.getWidth(), image.getHeight(), BufferedImage.TYPE_INT_ARGB);
                 // getRGB treats grey PNGs as linear and brightens them; the shader samples the raw grey
                 boolean grey = image.getColorModel().getColorSpace().getType() == ColorSpace.TYPE_GRAY;
@@ -250,7 +253,7 @@ public class VirtualDestroyStage extends ElementHolder {
                 var bytes = new ByteArrayOutputStream();
                 ImageIO.write(out, "png", bytes);
                 builder.addData(target, bytes.toByteArray());
-            } catch (IOException e) {
+            } catch (IOException | RuntimeException e) {
                 LOGGER.warn("Couldn't convert '{}', using it unblended", path, e);
                 builder.addData(target, vanilla);
             }
