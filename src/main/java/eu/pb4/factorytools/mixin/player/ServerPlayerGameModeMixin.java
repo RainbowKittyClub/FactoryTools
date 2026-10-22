@@ -49,7 +49,8 @@ public class ServerPlayerGameModeMixin {
     private void sendHitParticles(CallbackInfo ci) {
         var pos = this.destroyPos;
         var state = this.level.getBlockState(pos);
-        if (!(PolymerSyncedObject.getSyncedObject(BuiltInRegistries.BLOCK, state.getBlock()) instanceof CustomBreakingParticleBlock block)) {
+        if (!(PolymerSyncedObject.getSyncedObject(BuiltInRegistries.BLOCK, state.getBlock()) instanceof CustomBreakingParticleBlock block)
+                || !state.shouldSpawnTerrainParticles()) {
             return;
         }
 
