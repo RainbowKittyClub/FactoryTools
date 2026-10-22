@@ -210,8 +210,8 @@ public record MiningStageModel(List<LazyItemStack> stages, Matrix4fc transformat
         }
 
         var crack = new JsonObject();
-        crack.add("from", array(from.subtract(INFLATION)));
-        crack.add("to", array(to.add(INFLATION)));
+        crack.add("from", array(withinModelBounds(from.subtract(INFLATION))));
+        crack.add("to", array(withinModelBounds(to.add(INFLATION))));
         if (element.has("rotation")) {
             crack.add("rotation", element.get("rotation").deepCopy());
         }
@@ -232,6 +232,11 @@ public record MiningStageModel(List<LazyItemStack> stages, Matrix4fc transformat
         }
         element.add("faces", faces);
         return element;
+    }
+
+    // Vanilla rejects a model with an element reaching past -16 or 32
+    private static Vec3 withinModelBounds(Vec3 vec) {
+        return new Vec3(Math.clamp(vec.x, -16, 32), Math.clamp(vec.y, -16, 32), Math.clamp(vec.z, -16, 32));
     }
 
     private static Vec3 vec(JsonArray array) {
