@@ -10,6 +10,7 @@ import eu.pb4.polymer.resourcepack.extras.api.ResourcePackExtras;
 import eu.pb4.polymer.resourcepack.extras.api.format.model.ModelAsset;
 import eu.pb4.polymer.virtualentity.api.ElementHolder;
 import eu.pb4.polymer.virtualentity.api.attachment.ChunkAttachment;
+import eu.pb4.polymer.virtualentity.api.attachment.HolderAttachment;
 import eu.pb4.polymer.virtualentity.api.elements.ItemDisplayElement;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3f;
@@ -63,11 +64,16 @@ public class VirtualDestroyStage extends ElementHolder {
             return true;
         }
 
-        self.setModels(marker.getMiningStageModels(state, pos, player));
-
         var vecPos = Vec3.atCenterOf(pos);
 
-        if (self.getAttachment() == null || !self.getAttachment().getPos().equals(vecPos)) {
+        // Respawned rather than moved, so the new block's shape never shows at the old one
+        if (self.getAttachment() != null && !self.getAttachment().getPos().equals(vecPos)) {
+            self.destroy();
+        }
+
+        self.setModels(marker.getMiningStageModels(state, pos, player));
+
+        if (self.getAttachment() == null) {
             ChunkAttachment.of(self, player.level(), vecPos);
         }
 
@@ -91,6 +97,15 @@ public class VirtualDestroyStage extends ElementHolder {
         if (player != null && player.connection != null) {
             ((ServerPlayNetExtF) player.connection).factorytools$getVirtualDestroyStage().destroy();
         }
+    }
+
+    @Override
+    public void setAttachment(@Nullable HolderAttachment attachment) {
+        if (attachment != null && this.getAttachment() == null) {
+            // Otherwise a reattached holder spawns at the block it was last at
+            this.currentPos = Vec3.ZERO;
+        }
+        super.setAttachment(attachment);
     }
 
     public void setState(int i) {
