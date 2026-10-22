@@ -14,6 +14,7 @@ import eu.pb4.polymer.resourcepack.extras.api.format.item.model.BasicItemModel;
 import eu.pb4.polymer.resourcepack.extras.api.format.model.ModelAsset;
 import net.minecraft.core.Direction;
 import net.minecraft.resources.Identifier;
+import net.minecraft.util.Mth;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.Nullable;
@@ -32,7 +33,8 @@ import java.util.TreeMap;
  * Mining stage (crack) model, drawn by {@link VirtualDestroyStage} instead of its full cube.
  *
  * @param stages         one model for each of the 10 destroy stages
- * @param transformation display transformation, relative to the center of the block
+ * @param transformation display transformation, relative to the center of the block; like for any item display,
+ *                       the client then turns the model 180° around Y
  */
 public record MiningStageModel(List<LazyItemStack> stages, Matrix4fc transformation) {
     private static final Logger LOGGER = LoggerFactory.getLogger(MiningStageModel.class);
@@ -53,8 +55,11 @@ public record MiningStageModel(List<LazyItemStack> stages, Matrix4fc transformat
         return new MiningStageModel(stagesOf(blockModel), transformation);
     }
 
+    /**
+     * Cracks for a block model, placed the way the world draws that model as a block.
+     */
     public static MiningStageModel of(Identifier blockModel) {
-        return of(blockModel, new Matrix4f());
+        return of(blockModel, new Matrix4f().rotateY(Mth.PI));
     }
 
     /**
