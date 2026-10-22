@@ -25,6 +25,7 @@ import org.slf4j.LoggerFactory;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
@@ -42,6 +43,7 @@ public record MiningStageModel(List<LazyItemStack> stages, Matrix4fc transformat
     private static final Vec3 INFLATION = new Vec3(0.08, 0.08, 0.08);
     private static final String[] COPIED_ELEMENT_KEYS = {"rotation", "shade", "shade_direction_override", "light_emission"};
     private static final Map<Identifier, List<LazyItemStack>> STAGES = new TreeMap<>();
+    private static final Map<Identifier, List<LazyItemStack>> REQUESTED = new HashMap<>();
 
     public MiningStageModel {
         if (stages.size() != VirtualDestroyStage.MODELS.length) {
@@ -64,18 +66,26 @@ public record MiningStageModel(List<LazyItemStack> stages, Matrix4fc transformat
 
     /**
      * Crack models with the geometry of a block model and every texture replaced by the stage's crack texture.
-     * They are generated into the resource pack, so request them before it's built.
+     * They are generated into the resource pack, so request them before it's built, not lazily from a {@link VirtualDestroyStage.Marker}.
      */
     public static List<LazyItemStack> stagesOf(Identifier blockModel) {
+        synchronized (STAGES) {
+            var requested = REQUESTED.get(blockModel);
+            if (requested != null) {
+                return requested;
+            }
+        }
         var source = geometrySource(blockModel);
         synchronized (STAGES) {
-            return STAGES.computeIfAbsent(source, id -> {
+            var stages = STAGES.computeIfAbsent(source, id -> {
                 var list = new ArrayList<LazyItemStack>(VirtualDestroyStage.MODELS.length);
                 for (int i = 0; i < VirtualDestroyStage.MODELS.length; i++) {
                     list.add(ItemDisplayElementUtil.getModel(stageModelId(id, i)));
                 }
                 return List.copyOf(list);
             });
+            REQUESTED.put(blockModel, stages);
+            return stages;
         }
     }
 
