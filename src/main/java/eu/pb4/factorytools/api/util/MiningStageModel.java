@@ -89,19 +89,13 @@ public record MiningStageModel(List<LazyItemStack> stages, Matrix4fc transformat
         }
 
         for (var source : sources) {
-            var elements = resolveElements(builder, source);
-            if (elements == null) {
-                LOGGER.warn("Couldn't find the elements of model '{}', its mining stages will be empty", source);
-                elements = new JsonArray();
+            var cracked = crackElements(builder, source);
+            if (cracked == null) {
+                LOGGER.warn("Couldn't find the elements of model '{}', its mining stages will be a full cube", source);
+                cracked = new JsonArray();
+                cracked.add(crackElement(cubeElement()));
             }
 
-            var cracked = new JsonArray();
-            for (var element : elements) {
-                var crack = crackElement(element.getAsJsonObject());
-                if (crack != null) {
-                    cracked.add(crack);
-                }
-            }
             var base = stageModelId(source, -1);
             var baseModel = new JsonObject();
             baseModel.add("elements", cracked);
@@ -142,6 +136,22 @@ public record MiningStageModel(List<LazyItemStack> stages, Matrix4fc transformat
         } catch (Throwable e) {
             return null;
         }
+    }
+
+    @Nullable
+    private static JsonArray crackElements(ResourcePackBuilder builder, Identifier source) {
+        var elements = resolveElements(builder, source);
+        if (elements == null) {
+            return null;
+        }
+        var cracked = new JsonArray();
+        for (var element : elements) {
+            var crack = crackElement(element.getAsJsonObject());
+            if (crack != null) {
+                cracked.add(crack);
+            }
+        }
+        return cracked;
     }
 
     // Elements are copied as json, since a codec round trip drops values vanilla requires, like a rotation's origin
@@ -203,6 +213,18 @@ public record MiningStageModel(List<LazyItemStack> stages, Matrix4fc transformat
         }
         crack.add("faces", crackFaces);
         return crack;
+    }
+
+    private static JsonObject cubeElement() {
+        var element = new JsonObject();
+        element.add("from", array(Vec3.ZERO));
+        element.add("to", array(new Vec3(16, 16, 16)));
+        var faces = new JsonObject();
+        for (var direction : Direction.values()) {
+            faces.add(direction.getSerializedName(), new JsonObject());
+        }
+        element.add("faces", faces);
+        return element;
     }
 
     private static Vec3 vec(JsonArray array) {
