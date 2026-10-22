@@ -38,6 +38,7 @@ public record MiningStageModel(List<LazyItemStack> stages, Matrix4fc transformat
     private static final Logger LOGGER = LoggerFactory.getLogger(MiningStageModel.class);
     // Keeps the cracks just outside the faces they copy, like the cube's 1.01 scale
     private static final Vec3 INFLATION = new Vec3(0.08, 0.08, 0.08);
+    private static final String[] COPIED_ELEMENT_KEYS = {"rotation", "shade", "shade_direction_override", "light_emission"};
     private static final Map<Identifier, List<LazyItemStack>> STAGES = new TreeMap<>();
 
     public MiningStageModel {
@@ -212,11 +213,10 @@ public record MiningStageModel(List<LazyItemStack> stages, Matrix4fc transformat
         var crack = new JsonObject();
         crack.add("from", array(withinModelBounds(from.subtract(INFLATION))));
         crack.add("to", array(withinModelBounds(to.add(INFLATION))));
-        if (element.has("rotation")) {
-            crack.add("rotation", element.get("rotation").deepCopy());
-        }
-        if (element.has("shade")) {
-            crack.add("shade", element.get("shade").deepCopy());
+        for (var key : COPIED_ELEMENT_KEYS) {
+            if (element.has(key)) {
+                crack.add(key, element.get(key).deepCopy());
+            }
         }
         crack.add("faces", crackFaces);
         return crack;
