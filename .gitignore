@@ -31,3 +31,21 @@ bin/
 # fabric
 
 run/
+
+# fabric
+
+run/
+
+# logs
+
+logs/
+*.log
+
+# claude code local session state; shared settings stay trackable
+
+**/.claude/*
+!/.claude/settings.json
+.mcp.json
+
+# access tokens
+*.pat

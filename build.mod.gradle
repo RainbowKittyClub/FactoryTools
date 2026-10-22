@@ -1,0 +1,6 @@
+// FactoryTools-specific build logic. Applied last by the shared gradle/build.gradle.
+
+dependencies {
+	// Optional integration, loaded only when the mod is present; Modrinth is a repository of the shared build
+	compileOnly "maven.modrinth:htm:${project.htm_version}"
+}
