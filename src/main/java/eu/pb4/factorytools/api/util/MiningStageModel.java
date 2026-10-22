@@ -142,20 +142,24 @@ public record MiningStageModel(List<LazyItemStack> stages, Matrix4fc transformat
     // Models without elements of their own share their parent's crack models
     private static Identifier geometrySource(Identifier model) {
         for (int depth = 0; depth < 32; depth++) {
-            var json = readJarModel(model);
-            if (json == null || json.has("elements") || !json.has("parent")) {
+            var parent = jarParentWithoutElements(model);
+            if (parent == null) {
                 return model;
             }
-            model = Identifier.parse(json.get("parent").getAsString());
+            model = parent;
         }
         return model;
     }
 
     @Nullable
-    private static JsonObject readJarModel(Identifier model) {
+    private static Identifier jarParentWithoutElements(Identifier model) {
         try {
             var data = ResourceUtils.getJarData("assets/" + model.getNamespace() + "/models/" + model.getPath() + ".json");
-            return data != null ? JsonParser.parseString(new String(data, StandardCharsets.UTF_8)).getAsJsonObject() : null;
+            if (data == null) {
+                return null;
+            }
+            var json = JsonParser.parseString(new String(data, StandardCharsets.UTF_8)).getAsJsonObject();
+            return json.has("elements") || !json.has("parent") ? null : Identifier.parse(json.get("parent").getAsString());
         } catch (Throwable e) {
             return null;
         }
