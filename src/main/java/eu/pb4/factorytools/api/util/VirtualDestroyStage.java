@@ -7,8 +7,6 @@ import eu.pb4.polymer.core.api.utils.PolymerSyncedObject;
 import eu.pb4.polymer.resourcepack.api.PolymerResourcePackUtils;
 import eu.pb4.polymer.resourcepack.api.ResourcePackBuilder;
 import eu.pb4.polymer.resourcepack.extras.api.ResourcePackExtras;
-import eu.pb4.polymer.resourcepack.extras.api.format.item.ItemAsset;
-import eu.pb4.polymer.resourcepack.extras.api.format.item.model.BasicItemModel;
 import eu.pb4.polymer.virtualentity.api.ElementHolder;
 import eu.pb4.polymer.virtualentity.api.attachment.ChunkAttachment;
 import eu.pb4.polymer.virtualentity.api.elements.ItemDisplayElement;
@@ -177,7 +175,6 @@ public class VirtualDestroyStage extends ElementHolder {
 
         PolymerResourcePackUtils.RESOURCE_PACK_CREATION_EVENT.register(x -> {
             for (var i = 0; i < MODELS.length; i++) {
-                x.addData("", new ItemAsset(new BasicItemModel(Identifier.fromNamespaceAndPath(ModInit.ID, "block/special/destroy_stage_" + i)), ItemAsset.Properties.DEFAULT).toJson().getBytes(StandardCharsets.UTF_8));
                 x.addData("assets/factorytools/models/block/special/destroy_stage_" + i + ".json", model.replace("|ID|", "" + i).getBytes(StandardCharsets.UTF_8));
             }
         });
