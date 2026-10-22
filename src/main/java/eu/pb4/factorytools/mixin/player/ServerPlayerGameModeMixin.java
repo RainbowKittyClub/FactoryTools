@@ -91,7 +91,8 @@ public class ServerPlayerGameModeMixin {
         return new Vec3(pos.getX() + x, pos.getY() + y, pos.getZ() + z);
     }
 
-    // A terrain particle's random motion at the 0.2 power vanilla gives hit particles
+    // Vanilla's hit particle motion (power 0.2); item particles keep it, block particles get rerandomized
+    // by the client at full power
     @Unique
     private Vec3 factorytools$hitParticleMotion() {
         var random = this.level.getRandom();
