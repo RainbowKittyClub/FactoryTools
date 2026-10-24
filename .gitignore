@@ -32,10 +32,6 @@ bin/
 
 run/
 
-# fabric
-
-run/
-
 # logs
 
 logs/
