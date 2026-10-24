@@ -110,6 +110,10 @@ public record MiningStageModel(List<LazyItemStack> stages, Matrix4fc transformat
                 cracked = crackElements(builder, source);
                 if (cracked == null) {
                     LOGGER.warn("Couldn't find the elements of model '{}', its mining stages will be a full cube", source);
+                } else if (cracked.isEmpty()) {
+                    // No element with a face to copy would leave an empty crack model, so no cracks at all
+                    LOGGER.warn("Model '{}' has no element faces to crack, its mining stages will be a full cube", source);
+                    cracked = null;
                 }
             } catch (Exception e) {
                 LOGGER.warn("Couldn't read the elements of model '{}', its mining stages will be a full cube", source, e);
