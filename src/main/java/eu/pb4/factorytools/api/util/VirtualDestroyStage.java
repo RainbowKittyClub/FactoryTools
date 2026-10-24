@@ -288,7 +288,9 @@ public class VirtualDestroyStage extends ElementHolder {
         }
 
         /**
-         * Models shaped like the block, drawn in place of the full cube. Null keeps the cube.
+         * Models shaped like the block, drawn in place of the full cube. Null keeps the cube. Asked on every mining
+         * progress update, so return models whose stages were requested before the resource pack was built
+         * (see {@link MiningStageModel#stagesOf}).
          */
         @Nullable
         default List<MiningStageModel> getMiningStageModels(BlockState state, BlockPos pos, ServerPlayer player) {

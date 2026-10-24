@@ -53,12 +53,18 @@ public record MiningStageModel(List<LazyItemStack> stages, Matrix4fc transformat
         transformation = new Matrix4f(transformation);
     }
 
+    /**
+     * Cracks for a block model, placed by the given transformation. Requests the crack models through
+     * {@link #stagesOf}, so call it before the resource pack is built: a model first requested after the build
+     * has no crack models in the pack until the next one.
+     */
     public static MiningStageModel of(Identifier blockModel, Matrix4fc transformation) {
         return new MiningStageModel(stagesOf(blockModel), transformation);
     }
 
     /**
-     * Cracks for a block model, placed the way the world draws that model as a block.
+     * Cracks for a block model, placed the way the world draws that model as a block. Like
+     * {@link #of(Identifier, Matrix4fc)}, call it before the resource pack is built.
      */
     public static MiningStageModel of(Identifier blockModel) {
         return of(blockModel, new Matrix4f().rotateY(Mth.PI));
