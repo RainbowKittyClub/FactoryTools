@@ -47,7 +47,7 @@ public class VirtualDestroyStage extends ElementHolder {
 
     public VirtualDestroyStage() {
         this.main.setItem(MODELS[0].get());
-        this.main.setScale(new Vector3f(1.01f));
+        this.main.setTransformation(CUBE_TRANSFORMATION);
         this.addElement(this.main);
     }
 
