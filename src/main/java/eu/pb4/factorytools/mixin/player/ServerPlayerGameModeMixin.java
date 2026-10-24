@@ -64,6 +64,9 @@ public class ServerPlayerGameModeMixin {
             }
             if (particle == null) {
                 particle = block.getBreakingParticle(state);
+                if (particle == null) {
+                    return;
+                }
                 position = this.factorytools$hitParticlePosition(state, pos, this.destroyDirection);
                 motion = this.factorytools$hitParticleMotion();
             }
