@@ -66,8 +66,10 @@ public class VirtualDestroyStage extends ElementHolder {
 
         var vecPos = Vec3.atCenterOf(pos);
 
-        // Respawned rather than moved, so the new block's shape never shows at the old one
-        if (self.getAttachment() != null && !self.getAttachment().getPos().equals(vecPos)) {
+        // Respawned rather than moved, so the new block's shape never shows at the old one; the same position in
+        // another dimension is another block too
+        var attachment = self.getAttachment();
+        if (attachment != null && (attachment.getWorld() != player.level() || !attachment.getPos().equals(vecPos))) {
             self.destroy();
         }
 
