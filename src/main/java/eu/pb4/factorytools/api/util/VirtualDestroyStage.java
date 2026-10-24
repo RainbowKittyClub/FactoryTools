@@ -236,6 +236,11 @@ public class VirtualDestroyStage extends ElementHolder {
                 continue;
             }
             var target = crackTexturePath(i);
+            // The converted texture keeps the source's layout, so an animated stage keeps its frames
+            var metadata = builder.getDataOrSource(path + ".mcmeta");
+            if (metadata != null) {
+                builder.addData(target + ".mcmeta", metadata);
+            }
             try {
                 var image = ImageIO.read(new ByteArrayInputStream(vanilla));
                 if (image == null) {
