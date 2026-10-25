@@ -53,12 +53,18 @@ public record MiningStageModel(List<LazyItemStack> stages, Matrix4fc transformat
         transformation = new Matrix4f(transformation);
     }
 
+    /**
+     * Cracks for a block model, placed by the given transformation. Requests the crack models through
+     * {@link #stagesOf}, so call it before the resource pack is built: a model first requested after the build
+     * has no crack models in the pack until the next one.
+     */
     public static MiningStageModel of(Identifier blockModel, Matrix4fc transformation) {
         return new MiningStageModel(stagesOf(blockModel), transformation);
     }
 
     /**
-     * Cracks for a block model, placed the way the world draws that model as a block.
+     * Cracks for a block model, placed the way the world draws that model as a block. Like
+     * {@link #of(Identifier, Matrix4fc)}, call it before the resource pack is built.
      */
     public static MiningStageModel of(Identifier blockModel) {
         return of(blockModel, new Matrix4f().rotateY(Mth.PI));
@@ -106,15 +112,16 @@ public record MiningStageModel(List<LazyItemStack> stages, Matrix4fc transformat
 
         for (var source : sources) {
             JsonArray cracked = null;
+            Exception failure = null;
             try {
                 cracked = crackElements(builder, source);
-                if (cracked == null) {
-                    LOGGER.warn("Couldn't find the elements of model '{}', its mining stages will be a full cube", source);
-                }
             } catch (Exception e) {
-                LOGGER.warn("Couldn't read the elements of model '{}', its mining stages will be a full cube", source, e);
+                failure = e;
             }
-            if (cracked == null) {
+            // No element with a face to copy would leave an empty crack model, so no cracks at all; only a read
+            // failure has a stack trace to log
+            if (cracked == null || cracked.isEmpty()) {
+                LOGGER.warn("Missing elements of model '{}', using fallback crack overlay", source, failure);
                 cracked = new JsonArray();
                 cracked.add(crackElement(cubeElement()));
             }

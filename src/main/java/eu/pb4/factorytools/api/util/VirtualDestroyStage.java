@@ -47,7 +47,7 @@ public class VirtualDestroyStage extends ElementHolder {
 
     public VirtualDestroyStage() {
         this.main.setItem(MODELS[0].get());
-        this.main.setScale(new Vector3f(1.01f));
+        this.main.setTransformation(CUBE_TRANSFORMATION);
         this.addElement(this.main);
     }
 
@@ -66,8 +66,10 @@ public class VirtualDestroyStage extends ElementHolder {
 
         var vecPos = Vec3.atCenterOf(pos);
 
-        // Respawned rather than moved, so the new block's shape never shows at the old one
-        if (self.getAttachment() != null && !self.getAttachment().getPos().equals(vecPos)) {
+        // Respawned rather than moved, so the new block's shape never shows at the old one; the same position in
+        // another dimension is another block too
+        var attachment = self.getAttachment();
+        if (attachment != null && (attachment.getWorld() != player.level() || !attachment.getPos().equals(vecPos))) {
             self.destroy();
         }
 
@@ -234,6 +236,11 @@ public class VirtualDestroyStage extends ElementHolder {
                 continue;
             }
             var target = crackTexturePath(i);
+            // The converted texture keeps the source's layout, so an animated stage keeps its frames
+            var metadata = builder.getDataOrSource(path + ".mcmeta");
+            if (metadata != null) {
+                builder.addData(target + ".mcmeta", metadata);
+            }
             try {
                 var image = ImageIO.read(new ByteArrayInputStream(vanilla));
                 if (image == null) {
@@ -281,7 +288,9 @@ public class VirtualDestroyStage extends ElementHolder {
         }
 
         /**
-         * Models shaped like the block, drawn in place of the full cube. Null keeps the cube.
+         * Models shaped like the block, drawn in place of the full cube. Null keeps the cube. Asked on every mining
+         * progress update, so return models whose stages were requested before the resource pack was built
+         * (see {@link MiningStageModel#stagesOf}).
          */
         @Nullable
         default List<MiningStageModel> getMiningStageModels(BlockState state, BlockPos pos, ServerPlayer player) {
