@@ -1,0 +1,53 @@
+name: Build
+
+# Builds every Minecraft version on each branch push and pull request, publishing nothing. The steps
+# live in the gradle submodule (gradle/ci/release.sh), versioned with the build.
+on:
+  push:
+    branches:
+      - "**"
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  # GitHub Packages, for the RKC Polymer fork and kalic0re.
+  packages: read
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    # A pull request from a branch of this repository was already built by that branch's push.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository
+    name: build (${{ matrix.polymer_source }} Polymer)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # fork is what the dev server runs; upstream fails on API only the fork has. A mod that uses
+        # fork API on purpose, or has no Polymer, drops upstream.
+        polymer_source: [fork, upstream]
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+        with:
+          submodules: recursive
+
+      - name: Read the Java version
+        run: gradle/ci/release.sh java
+
+      - name: Set up Java
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+          cache: gradle
+
+      - name: Build
+        run: gradle/ci/release.sh gradle build -Ppolymer_source=${{ matrix.polymer_source }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
