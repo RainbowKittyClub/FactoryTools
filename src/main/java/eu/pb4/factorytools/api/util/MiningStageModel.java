@@ -112,19 +112,16 @@ public record MiningStageModel(List<LazyItemStack> stages, Matrix4fc transformat
 
         for (var source : sources) {
             JsonArray cracked = null;
+            Exception failure = null;
             try {
                 cracked = crackElements(builder, source);
-                if (cracked == null) {
-                    LOGGER.warn("Couldn't find the elements of model '{}', its mining stages will be a full cube", source);
-                } else if (cracked.isEmpty()) {
-                    // No element with a face to copy would leave an empty crack model, so no cracks at all
-                    LOGGER.warn("Model '{}' has no element faces to crack, its mining stages will be a full cube", source);
-                    cracked = null;
-                }
             } catch (Exception e) {
-                LOGGER.warn("Couldn't read the elements of model '{}', its mining stages will be a full cube", source, e);
+                failure = e;
             }
-            if (cracked == null) {
+            // No element with a face to copy would leave an empty crack model, so no cracks at all; only a read
+            // failure has a stack trace to log
+            if (cracked == null || cracked.isEmpty()) {
+                LOGGER.warn("Missing elements of model '{}', using fallback crack overlay", source, failure);
                 cracked = new JsonArray();
                 cracked.add(crackElement(cubeElement()));
             }
